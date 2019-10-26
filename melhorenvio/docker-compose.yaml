@@ -1,0 +1,79 @@
+version: "3.7"
+
+services:
+  db:
+    image: mysql:5.7.20
+    container_name: mysql-container
+#    comand: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=melhorenvio
+      - MYSQL_DATABASE=melhorenvio
+    volumes:
+      - proj_melhorenvio:/var/lib/mysql
+#     ports:
+#       - "3306:3000"
+    networks:
+        vpcbr:
+             ipv4_address: 172.16.0.6
+  redis:
+    image: redis
+    container_name: redis-container
+    command: redis-server --requirepass Redis2019!
+    ports:
+       - "6379:6379"
+    volumes:
+      - proj_melhorenvio:/redis
+    networks:
+         vpcbr:
+            ipv4_address: 172.16.0.7
+  webserver:
+     image: nginx:alpine
+     container_name: mysql-container
+     restart: always
+     container_name: webserver 
+     restart: unless-stopped
+     tty: true
+     volumes:
+       - proj_melhorenvio:/var/www/  
+     ports:
+       - "80:80"
+     networks:
+        vpcbr:
+            ipv4_address: 172.16.0.8
+     depends_on:
+       - db
+       - redis
+     links:
+       - db
+       - db:database
+       - redis   
+             
+  composer:
+    image: composer:1.8.4
+    links:
+      - db
+      - db:database
+      - redis
+    networks:
+      vpcbr:
+          ipv4_address: 172.16.0.9
+
+
+  php:
+    image: mlalbuquerque/php:7.1
+    build: .
+    volumes:
+        - "proj_melhorenvio:/var/php"
+    environment:
+        PATH: "/root/.composer/vendor/bin:${PATH}"
+
+networks:
+  vpcbr:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
+volumes:
+  proj_melhorenvio:
+       external: true
